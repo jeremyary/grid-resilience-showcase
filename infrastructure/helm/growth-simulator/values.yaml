@@ -1,0 +1,35 @@
+# This project was developed with assistance from AI tools.
+
+replicaCount: 1
+
+image:
+  repository: quay.io/olavtar/grid-resilience-growth-simulator
+  tag: latest
+  pullPolicy: Always
+
+serviceAccount:
+  create: true
+  name: growth-simulator
+
+service:
+  port: 8080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+kafka:
+  bootstrapServers: grid-kafka-kafka-bootstrap.grid-ops-infra.svc.cluster.local:9092
+  securityProtocol: PLAINTEXT
+
+database:
+  host: grid-postgres-ha.grid-ops-infra.svc.cluster.local
+  port: 5432
+  name: gridops
+  user: gridops
+
+env: {}

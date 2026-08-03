@@ -29,14 +29,17 @@ def _insert_feeders(cur: psycopg.Cursor) -> int:
     for r in rows:
         cur.execute(
             """INSERT INTO feeders (id, substation_id, name, normal_capacity_mw,
-               current_load_mw, status) VALUES (%s, %s, %s, %s, %s, %s)
+               emergency_capacity_mw, current_load_mw, peak_load_mw, status)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (id) DO NOTHING""",
             (
                 r["id"],
                 r["substation_id"],
                 r["name"],
                 r["normal_capacity_mw"],
+                r.get("emergency_capacity_mw"),
                 r["current_load_mw"],
+                r.get("peak_load_mw"),
                 r["status"],
             ),
         )
@@ -51,8 +54,8 @@ def _insert_assets(cur: psycopg.Cursor) -> int:
                expected_lifespan_years, feeder_id, is_end_of_line,
                vegetation_clearance_m, last_inspection_date, status,
                rated_voltage_kv, phase_config, circuit_name, protection_zone,
-               customers_downstream)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               customers_downstream, rated_kva)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (id) DO NOTHING""",
             (
                 r["id"],
@@ -72,6 +75,7 @@ def _insert_assets(cur: psycopg.Cursor) -> int:
                 r.get("circuit_name"),
                 r.get("protection_zone"),
                 r.get("customers_downstream", 0),
+                r.get("rated_kva"),
             ),
         )
     return len(rows)
@@ -82,8 +86,8 @@ def _insert_segments(cur: psycopg.Cursor) -> int:
     for r in rows:
         cur.execute(
             """INSERT INTO segments (id, feeder_id, from_asset_id, to_asset_id,
-               conductor_type, length_m, customers_served, status)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+               conductor_type, length_m, customers_served, ampacity_a, status)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (id) DO NOTHING""",
             (
                 r["id"],
@@ -93,6 +97,7 @@ def _insert_segments(cur: psycopg.Cursor) -> int:
                 r.get("conductor_type"),
                 r.get("length_m"),
                 r.get("customers_served", 0),
+                r.get("ampacity_a"),
                 r.get("status", "energized"),
             ),
         )

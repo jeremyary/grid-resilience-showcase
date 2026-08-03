@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS feeders (
     substation_id       TEXT,
     name                TEXT,
     normal_capacity_mw  DOUBLE PRECISION,
+    emergency_capacity_mw DOUBLE PRECISION,
     current_load_mw     DOUBLE PRECISION,
+    peak_load_mw        DOUBLE PRECISION,
     status              TEXT DEFAULT 'energized'
 );
 
@@ -28,7 +30,8 @@ CREATE TABLE IF NOT EXISTS assets (
     phase_config            TEXT,
     circuit_name            TEXT,
     protection_zone         TEXT,
-    customers_downstream    INTEGER DEFAULT 0
+    customers_downstream    INTEGER DEFAULT 0,
+    rated_kva               DOUBLE PRECISION
 );
 
 CREATE TABLE IF NOT EXISTS segments (
@@ -39,6 +42,7 @@ CREATE TABLE IF NOT EXISTS segments (
     conductor_type  TEXT,
     length_m        DOUBLE PRECISION,
     customers_served INTEGER DEFAULT 0,
+    ampacity_a      DOUBLE PRECISION,
     status          TEXT DEFAULT 'energized'
 );
 
@@ -76,6 +80,12 @@ CREATE TABLE IF NOT EXISTS crews (
     current_lon     DOUBLE PRECISION,
     status          TEXT DEFAULT 'available'
 );
+
+-- Add columns for growth prediction (safe to re-run)
+ALTER TABLE feeders ADD COLUMN IF NOT EXISTS emergency_capacity_mw DOUBLE PRECISION;
+ALTER TABLE feeders ADD COLUMN IF NOT EXISTS peak_load_mw DOUBLE PRECISION;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS rated_kva DOUBLE PRECISION;
+ALTER TABLE segments ADD COLUMN IF NOT EXISTS ampacity_a DOUBLE PRECISION;
 
 -- Indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_assets_feeder ON assets(feeder_id);

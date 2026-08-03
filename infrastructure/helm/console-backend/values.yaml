@@ -38,6 +38,7 @@ upstreamServices:
   defectDetector: http://defect-detector.grid-ops-services.svc.cluster.local:8080
   dispatchOptimizer: http://dispatch-optimizer.grid-ops-services.svc.cluster.local:8080
   scenarioEngine: http://scenario-engine.grid-ops-services.svc.cluster.local:8080
+  growthSimulator: http://growth-simulator.grid-ops-services.svc.cluster.local:8080
 
 route:
   timeout: 300s

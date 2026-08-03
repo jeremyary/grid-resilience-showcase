@@ -200,9 +200,27 @@ services:
       DEFECT_DETECTOR_URL: http://defect-detector:8080
       DISPATCH_OPTIMIZER_URL: http://dispatch-optimizer:8080
       SCENARIO_ENGINE_URL: http://scenario-engine:8080
+      GROWTH_SIMULATOR_URL: http://growth-simulator:8080
     depends_on:
       kafka-topics:
         condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  growth-simulator:
+    build:
+      context: .
+      dockerfile: services/growth-simulator/Containerfile
+    container_name: grid-growth-simulator
+    ports:
+      - "8086:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: gridops
+      DB_USER: gridops
+      DB_PASSWORD: gridops
+    depends_on:
       postgres:
         condition: service_healthy
 

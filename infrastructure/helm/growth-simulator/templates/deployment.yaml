@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: console-backend
+  name: growth-simulator
   labels:
-    {{- include "console-backend.labels" . | nindent 4 }}
+    {{- include "growth-simulator.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "console-backend.selectorLabels" . | nindent 6 }}
+      {{- include "growth-simulator.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "console-backend.selectorLabels" . | nindent 8 }}
+        {{- include "growth-simulator.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "console-backend.serviceAccountName" . }}
+      serviceAccountName: {{ include "growth-simulator.serviceAccountName" . }}
       securityContext:
         runAsNonRoot: true
       containers:
-        - name: console-backend
+        - name: growth-simulator
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
@@ -50,18 +50,6 @@ spec:
                 secretKeyRef:
                   name: grid-postgres-pguser-gridops
                   key: password
-            - name: WEATHER_SERVICE_URL
-              value: {{ .Values.upstreamServices.weatherService | quote }}
-            - name: RISK_ENGINE_URL
-              value: {{ .Values.upstreamServices.riskEngine | quote }}
-            - name: DEFECT_DETECTOR_URL
-              value: {{ .Values.upstreamServices.defectDetector | quote }}
-            - name: DISPATCH_OPTIMIZER_URL
-              value: {{ .Values.upstreamServices.dispatchOptimizer | quote }}
-            - name: SCENARIO_ENGINE_URL
-              value: {{ .Values.upstreamServices.scenarioEngine | quote }}
-            - name: GROWTH_SIMULATOR_URL
-              value: {{ .Values.upstreamServices.growthSimulator | quote }}
             {{- range $key, $val := .Values.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}

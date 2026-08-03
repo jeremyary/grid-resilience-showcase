@@ -5,13 +5,14 @@ import { Masthead } from "./components/Masthead";
 import { ScenarioControls } from "./components/ScenarioControls";
 import { CustomerImpactBanner } from "./components/CustomerImpactBanner";
 import { OperationsView } from "./views/OperationsView";
+import { GrowthView } from "./views/GrowthView";
 import { PlatformView } from "./views/PlatformView";
 import { WhatsNextView } from "./views/WhatsNextView";
 import { useEventStream } from "./hooks/useEventStream";
 import "@patternfly/react-core/dist/styles/base.css";
 import "./styles/grid-ops.css";
 
-type ViewId = "operations" | "platform" | "whatsnext";
+type ViewId = "operations" | "growth" | "platform" | "whatsnext";
 
 export default function App() {
   const [activeView, setActiveView] = useState<ViewId>("operations");
@@ -50,6 +51,7 @@ export default function App() {
             onDismissOverlay={dismissOverlay}
           />
         )}
+        {activeView === "growth" && <GrowthView />}
         {activeView === "platform" && <PlatformView />}
         {activeView === "whatsnext" && <WhatsNextView />}
       </div>
