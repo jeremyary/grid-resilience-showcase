@@ -81,11 +81,26 @@ CREATE TABLE IF NOT EXISTS crews (
     status          TEXT DEFAULT 'available'
 );
 
+-- Conductor type reference table (electrical parameters for power-flow simulation)
+CREATE TABLE IF NOT EXISTS conductor_types (
+    name        TEXT PRIMARY KEY,
+    r_ohm_per_km    DOUBLE PRECISION NOT NULL,
+    x_ohm_per_km    DOUBLE PRECISION NOT NULL,
+    c_nf_per_km     DOUBLE PRECISION NOT NULL,
+    max_i_ka        DOUBLE PRECISION NOT NULL
+);
+
 -- Add columns for growth prediction (safe to re-run)
 ALTER TABLE feeders ADD COLUMN IF NOT EXISTS emergency_capacity_mw DOUBLE PRECISION;
 ALTER TABLE feeders ADD COLUMN IF NOT EXISTS peak_load_mw DOUBLE PRECISION;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS rated_kva DOUBLE PRECISION;
 ALTER TABLE segments ADD COLUMN IF NOT EXISTS ampacity_a DOUBLE PRECISION;
+
+-- Transformer electrical parameters for power-flow simulation
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS vk_percent DOUBLE PRECISION;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS vkr_percent DOUBLE PRECISION;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS i0_percent DOUBLE PRECISION;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS pfe_kw DOUBLE PRECISION;
 
 -- Indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_assets_feeder ON assets(feeder_id);

@@ -43,6 +43,13 @@ export interface AssetProjection {
   lon: number;
 }
 
+export interface YearlySnapshot {
+  year: number;
+  feeder_utilization_pct: Record<string, number>;
+  feeder_load_mw: Record<string, number>;
+  asset_utilization_pct: Record<string, number>;
+}
+
 export interface GrowthPrediction {
   scenario: GrowthScenario;
   feeders: FeederProjection[];
@@ -50,4 +57,5 @@ export interface GrowthPrediction {
   summary: string;
   total_new_load_mw: number;
   corridor_utilization_pct: number;
+  yearly_projections: YearlySnapshot[];
 }

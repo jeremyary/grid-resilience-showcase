@@ -1,0 +1,16 @@
+[
+  {
+    "name": "ACSR_4/0",
+    "r_ohm_per_km": 0.368,
+    "x_ohm_per_km": 0.243,
+    "c_nf_per_km": 10.0,
+    "max_i_ka": 0.340
+  },
+  {
+    "name": "ACSR_1/0",
+    "r_ohm_per_km": 0.696,
+    "x_ohm_per_km": 0.274,
+    "c_nf_per_km": 10.0,
+    "max_i_ka": 0.230
+  }
+]

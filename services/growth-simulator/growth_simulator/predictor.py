@@ -65,6 +65,15 @@ class AssetProjection(BaseModel):
     lon: float
 
 
+class YearlySnapshot(BaseModel):
+    """Utilization snapshot for a single year across all assets and feeders."""
+
+    year: int
+    feeder_utilization_pct: dict[str, float] = Field(default_factory=dict)
+    feeder_load_mw: dict[str, float] = Field(default_factory=dict)
+    asset_utilization_pct: dict[str, float] = Field(default_factory=dict)
+
+
 class GrowthPrediction(BaseModel):
     """Full prediction result."""
 
@@ -74,6 +83,7 @@ class GrowthPrediction(BaseModel):
     summary: str
     total_new_load_mw: float
     corridor_utilization_pct: float
+    yearly_projections: list[YearlySnapshot] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 // This project was developed with assistance from AI tools.
 
 import type { GrowthPrediction } from "../types/growth";
+import { ConstraintTimeline } from "./ConstraintTimeline";
 
 interface GrowthResultsPanelProps {
   prediction: GrowthPrediction | null;
@@ -76,6 +77,14 @@ export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
         </div>
       </div>
 
+      {prediction.yearly_projections && prediction.yearly_projections.length > 0 && (
+        <ConstraintTimeline
+          feeders={prediction.feeders}
+          yearlyProjections={prediction.yearly_projections}
+          horizonYears={prediction.scenario.horizon_years}
+        />
+      )}
+
       <div className="grid-card">
         <div className="grid-card__header">Feeder Projections</div>
         <div className="grid-card__body--flush" style={{ overflowX: "auto" }}>
@@ -87,6 +96,7 @@ export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
                 <th>Projected</th>
                 <th>Capacity</th>
                 <th>Status</th>
+                <th>Constraint</th>
               </tr>
             </thead>
             <tbody>
@@ -97,6 +107,15 @@ export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
                   <td>{f.projected_load_mw} MW ({f.projected_utilization_pct}%)</td>
                   <td>{f.normal_capacity_mw} MW</td>
                   <td><span className={statusBadge(f.status)}>{f.status.replace("_", " ")}</span></td>
+                  <td>
+                    {f.overload_year != null ? (
+                      <span style={{ fontWeight: 600, color: f.status === "overloaded" ? "#A30000" : "#F0AB00" }}>
+                        Year {f.overload_year}
+                      </span>
+                    ) : (
+                      <span style={{ color: "#6A6E73" }}>---</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -118,6 +137,7 @@ export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
                   <th>Current</th>
                   <th>Projected</th>
                   <th>Status</th>
+                  <th>Constraint</th>
                   <th>Recommendation</th>
                 </tr>
               </thead>
@@ -136,6 +156,15 @@ export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
                     <td>{a.rated_kva} kVA → {a.current_utilization_pct}%</td>
                     <td style={{ fontWeight: 600 }}>{a.projected_utilization_pct}%</td>
                     <td><span className={statusBadge(a.status)}>{a.status.replace("_", " ")}</span></td>
+                    <td>
+                      {a.overload_year != null ? (
+                        <span style={{ fontWeight: 600, color: a.status === "overloaded" ? "#A30000" : "#F0AB00" }}>
+                          Year {a.overload_year}
+                        </span>
+                      ) : (
+                        <span style={{ color: "#6A6E73" }}>---</span>
+                      )}
+                    </td>
                     <td style={{ fontSize: 11 }}>{a.recommendation}</td>
                   </tr>
                 ))}

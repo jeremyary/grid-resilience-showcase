@@ -54,8 +54,9 @@ def _insert_assets(cur: psycopg.Cursor) -> int:
                expected_lifespan_years, feeder_id, is_end_of_line,
                vegetation_clearance_m, last_inspection_date, status,
                rated_voltage_kv, phase_config, circuit_name, protection_zone,
-               customers_downstream, rated_kva)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               customers_downstream, rated_kva,
+               vk_percent, vkr_percent, i0_percent, pfe_kw)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (id) DO NOTHING""",
             (
                 r["id"],
@@ -76,6 +77,10 @@ def _insert_assets(cur: psycopg.Cursor) -> int:
                 r.get("protection_zone"),
                 r.get("customers_downstream", 0),
                 r.get("rated_kva"),
+                r.get("vk_percent"),
+                r.get("vkr_percent"),
+                r.get("i0_percent"),
+                r.get("pfe_kw"),
             ),
         )
     return len(rows)
@@ -180,16 +185,36 @@ def _insert_crews(cur: psycopg.Cursor) -> int:
     return len(rows)
 
 
+def _insert_conductor_types(cur: psycopg.Cursor) -> int:
+    rows = _load_json("conductor_types.json")
+    for r in rows:
+        cur.execute(
+            """INSERT INTO conductor_types (name, r_ohm_per_km, x_ohm_per_km,
+               c_nf_per_km, max_i_ka)
+               VALUES (%s,%s,%s,%s,%s)
+               ON CONFLICT (name) DO NOTHING""",
+            (
+                r["name"],
+                r["r_ohm_per_km"],
+                r["x_ohm_per_km"],
+                r["c_nf_per_km"],
+                r["max_i_ka"],
+            ),
+        )
+    return len(rows)
+
+
 def main() -> None:
     dsn = sys.argv[1] if len(sys.argv) > 1 else DB_DSN
     with psycopg.connect(dsn) as conn:
         with conn.cursor() as cur:
-            print(f"Feeders:  {_insert_feeders(cur)}")
-            print(f"Assets:   {_insert_assets(cur)}")
-            print(f"Segments: {_insert_segments(cur)}")
-            print(f"Switches: {_insert_switches(cur)}")
-            print(f"Cameras:  {_insert_cameras(cur)}")
-            print(f"Crews:    {_insert_crews(cur)}")
+            print(f"Feeders:         {_insert_feeders(cur)}")
+            print(f"Assets:          {_insert_assets(cur)}")
+            print(f"Segments:        {_insert_segments(cur)}")
+            print(f"Switches:        {_insert_switches(cur)}")
+            print(f"Cameras:         {_insert_cameras(cur)}")
+            print(f"Crews:           {_insert_crews(cur)}")
+            print(f"Conductor types: {_insert_conductor_types(cur)}")
         conn.commit()
     print("Seed data loaded.")
 
