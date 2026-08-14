@@ -234,6 +234,7 @@ class PowerFlowPredictor(GrowthPredictor):
             for year in range(1, scenario.horizon_years + 1):
                 self._apply_scenario_for_year(
                     net, scenario, feeder_xfmrs, load_map, baseline_loads, year,
+                    num_target_feeders=len(target_feeders),
                 )
                 pp.runpp(net, algorithm="nr", calculate_voltage_angles=True)
 
@@ -324,7 +325,7 @@ class PowerFlowPredictor(GrowthPredictor):
 
         asset_projections.sort(key=lambda a: a.projected_utilization_pct, reverse=True)
 
-        corridor_load = sum(fp.current_load_mw for fp in feeder_projections)
+        corridor_load = sum(f["current_load_mw"] for f in feeders)
         corridor_cap = sum(f["normal_capacity_mw"] for f in feeders)
         corridor_new = corridor_load + total_new_load_mw
         corridor_util = corridor_new / corridor_cap * 100 if corridor_cap else 0
@@ -372,12 +373,13 @@ class PowerFlowPredictor(GrowthPredictor):
         load_map: dict[str, int],
         baseline_loads: dict[str, tuple[float, float]],
         year: int,
+        num_target_feeders: int = 1,
     ) -> None:
         """Set loads in the network for a specific year of the scenario."""
         total_customers = sum(t["customers_downstream"] for t in feeder_xfmrs)
         organic_factor = (1 + scenario.annual_growth_pct / 100) ** year
 
-        feeder_share = 1.0 if len(scenario.feeder_ids) <= 1 else 1.0 / len(scenario.feeder_ids)
+        feeder_share = 1.0 / max(num_target_feeders, 1)
 
         for t in feeder_xfmrs:
             tid = t["id"]
