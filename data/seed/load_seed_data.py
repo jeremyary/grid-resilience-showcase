@@ -204,17 +204,37 @@ def _insert_conductor_types(cur: psycopg.Cursor) -> int:
     return len(rows)
 
 
+def _insert_mitigation_costs(cur: psycopg.Cursor) -> int:
+    cur.execute("SELECT COUNT(*) FROM mitigation_costs")
+    if (cur.fetchone() or [0])[0] > 0:
+        return 0
+    rows = _load_json("mitigation_costs.json")
+    for r in rows:
+        cur.execute(
+            """INSERT INTO mitigation_costs (mitigation_type, kva_max, cost_low, cost_high)
+               VALUES (%s,%s,%s,%s)""",
+            (
+                r["mitigation_type"],
+                r.get("kva_max"),
+                r["cost_low"],
+                r["cost_high"],
+            ),
+        )
+    return len(rows)
+
+
 def main() -> None:
     dsn = sys.argv[1] if len(sys.argv) > 1 else DB_DSN
     with psycopg.connect(dsn) as conn:
         with conn.cursor() as cur:
-            print(f"Feeders:         {_insert_feeders(cur)}")
-            print(f"Assets:          {_insert_assets(cur)}")
-            print(f"Segments:        {_insert_segments(cur)}")
-            print(f"Switches:        {_insert_switches(cur)}")
-            print(f"Cameras:         {_insert_cameras(cur)}")
-            print(f"Crews:           {_insert_crews(cur)}")
-            print(f"Conductor types: {_insert_conductor_types(cur)}")
+            print(f"Feeders:          {_insert_feeders(cur)}")
+            print(f"Assets:           {_insert_assets(cur)}")
+            print(f"Segments:         {_insert_segments(cur)}")
+            print(f"Switches:         {_insert_switches(cur)}")
+            print(f"Cameras:          {_insert_cameras(cur)}")
+            print(f"Crews:            {_insert_crews(cur)}")
+            print(f"Conductor types:  {_insert_conductor_types(cur)}")
+            print(f"Mitigation costs: {_insert_mitigation_costs(cur)}")
         conn.commit()
     print("Seed data loaded.")
 

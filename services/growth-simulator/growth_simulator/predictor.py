@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import math
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -45,6 +44,29 @@ class FeederProjection(BaseModel):
     headroom_mw: float
 
 
+class MitigationOption(BaseModel):
+    """One evaluated mitigation strategy for a constrained transformer."""
+
+    type: str
+    label: str
+    description: str
+    available: bool = True
+    unavailable_reason: str | None = None
+    cost_low: int | None = None
+    cost_high: int | None = None
+    capacity_added_kva: float | None = None
+    load_transferred_kva: float | None = None
+    resulting_utilization_pct: float | None = None
+    resulting_status: str | None = None
+    target_asset_id: str | None = None
+    target_before_utilization_pct: float | None = None
+    target_after_utilization_pct: float | None = None
+    years_gained: int | None = None
+    recommended: bool = False
+    most_durable: bool = False
+    note: str = ""
+
+
 class AssetProjection(BaseModel):
     """Projected status for a single transformer."""
 
@@ -60,7 +82,7 @@ class AssetProjection(BaseModel):
     status: str
     newly_at_risk: bool = False
     overload_year: int | None = None
-    recommendation: str = ""
+    mitigations: list[MitigationOption] = Field(default_factory=list)
     lat: float
     lon: float
 
@@ -284,11 +306,6 @@ class ComputationalPredictor(GrowthPredictor):
                 scenario.horizon_years,
             )
 
-        recommendation = ""
-        if status != "ok":
-            target_kva = projected_load_kva / (self.planning_threshold_pct / 100)
-            recommendation = self._recommend_transformer_size(target_kva)
-
         return AssetProjection(
             asset_id=t["id"],
             asset_type="transformer",
@@ -302,7 +319,6 @@ class ComputationalPredictor(GrowthPredictor):
             status=status,
             newly_at_risk=newly_at_risk,
             overload_year=overload_year,
-            recommendation=recommendation,
             lat=t["lat"],
             lon=t["lon"],
         )
@@ -329,12 +345,6 @@ class ComputationalPredictor(GrowthPredictor):
             if projected > threshold_kva:
                 return year
         return None
-
-    def _recommend_transformer_size(self, target_kva: float) -> str:
-        for size in STANDARD_TRANSFORMER_SIZES_KVA:
-            if size >= target_kva:
-                return f"Upgrade to {size} kVA transformer"
-        return f"Upgrade to {math.ceil(target_kva / 100) * 100} kVA (non-standard, requires engineering review)"
 
     def _build_summary(
         self, scenario: GrowthScenario,

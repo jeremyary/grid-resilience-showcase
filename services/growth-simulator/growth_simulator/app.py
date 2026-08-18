@@ -96,6 +96,14 @@ def _load_grid_data() -> dict[str, Any]:
             conductor_rows = [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
             conductor_types = {r["name"]: r for r in conductor_rows}
 
+            # Optional table — guard so a not-yet-migrated DB doesn't 500 the endpoint.
+            mitigation_costs: list[dict[str, Any]] = []
+            cur.execute("SELECT to_regclass('public.mitigation_costs')")
+            if (cur.fetchone() or [None])[0] is not None:
+                cur.execute("SELECT mitigation_type, kva_max, cost_low, cost_high FROM mitigation_costs")
+                cols = [d[0] for d in (cur.description or [])]
+                mitigation_costs = [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
     return {
         "feeders": feeders,
         "transformers": transformers,
@@ -104,6 +112,7 @@ def _load_grid_data() -> dict[str, Any]:
         "assets": assets,
         "segments": segments,
         "conductor_types": conductor_types,
+        "mitigation_costs": mitigation_costs,
     }
 
 

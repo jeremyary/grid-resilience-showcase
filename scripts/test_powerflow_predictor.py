@@ -31,6 +31,7 @@ def load_grid_data() -> dict:
     segments_raw = json.loads((SEED_DIR / "segments.json").read_text())
     feeders_raw = json.loads((SEED_DIR / "feeders.json").read_text())
     conductor_types_raw = json.loads((SEED_DIR / "conductor_types.json").read_text())
+    mitigation_costs = json.loads((SEED_DIR / "mitigation_costs.json").read_text())
 
     transformers = [
         a for a in assets_raw
@@ -50,6 +51,7 @@ def load_grid_data() -> dict:
         "assets": assets_raw,
         "segments": segments_raw,
         "conductor_types": conductor_types,
+        "mitigation_costs": mitigation_costs,
     }
 
 
@@ -129,6 +131,24 @@ def main() -> None:
     for a in overloaded[:10]:
         print(f"  {a.asset_id} ({a.rated_kva:.0f} kVA): {a.projected_utilization_pct}% "
               f"[{a.status}] first constraint year: {a.overload_year or 'none'}")
+
+    # Show mitigation options for the most-constrained transformer
+    if overloaded:
+        a = overloaded[0]
+        print(f"\n--- Mitigation options for {a.asset_id} "
+              f"({a.rated_kva:.0f} kVA @ {a.projected_utilization_pct}%) ---")
+        for m in a.mitigations:
+            star = " *RECOMMENDED*" if m.recommended else ""
+            if not m.available:
+                print(f"  [{m.label}] unavailable — {m.unavailable_reason}{star}")
+                continue
+            cost = (f"${m.cost_low:,}–${m.cost_high:,}"
+                    if m.cost_low is not None else "n/a")
+            print(f"  [{m.label}] {m.description} | {cost} | "
+                  f"-> {m.resulting_utilization_pct}% [{m.resulting_status}]{star}")
+            if m.target_asset_id:
+                print(f"      target {m.target_asset_id}: "
+                      f"{m.target_before_utilization_pct}% -> {m.target_after_utilization_pct}%")
 
     # Year-by-year constraint timeline
     print(f"\n--- Year-by-year timeline (F-12 feeder + its transformers) ---")

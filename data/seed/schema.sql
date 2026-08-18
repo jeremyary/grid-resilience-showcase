@@ -90,6 +90,14 @@ CREATE TABLE IF NOT EXISTS conductor_types (
     max_i_ka        DOUBLE PRECISION NOT NULL
 );
 
+-- Mitigation cost reference table (planning-level ranges by strategy and new-unit kVA)
+CREATE TABLE IF NOT EXISTS mitigation_costs (
+    mitigation_type TEXT NOT NULL,
+    kva_max         DOUBLE PRECISION,
+    cost_low        INTEGER NOT NULL,
+    cost_high       INTEGER NOT NULL
+);
+
 -- Add columns for growth prediction (safe to re-run)
 ALTER TABLE feeders ADD COLUMN IF NOT EXISTS emergency_capacity_mw DOUBLE PRECISION;
 ALTER TABLE feeders ADD COLUMN IF NOT EXISTS peak_load_mw DOUBLE PRECISION;

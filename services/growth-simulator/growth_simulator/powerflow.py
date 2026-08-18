@@ -16,10 +16,16 @@ from growth_simulator.predictor import (
     GrowthPrediction,
     GrowthPredictor,
     GrowthScenario,
+    MitigationOption,
     YearlySnapshot,
 )
 
 _DIST_LV_KV = 0.24
+
+# Preferred (soft) headroom target. Reaching this is "good headroom"; the planning threshold
+# (80%) is the hard feasibility limit. A mitigation is sized to clear the limit, not to force a
+# transformer-size jump just to hit the preferred target exactly.
+HEADROOM_TARGET_PCT = 75.0
 
 
 def _find_nearest_pole(transformer: dict[str, Any], poles: list[dict[str, Any]]) -> str:
@@ -185,6 +191,7 @@ class PowerFlowPredictor(GrowthPredictor):
         assets = grid_data["assets"]
         conductor_types = grid_data.get("conductor_types", {})
         substation_transformers = grid_data.get("substation_transformers", [])
+        mitigation_costs = grid_data.get("mitigation_costs", [])
 
         target_feeders = [f for f in feeders if not scenario.feeder_ids or f["id"] in scenario.feeder_ids]
 
@@ -290,6 +297,21 @@ class PowerFlowPredictor(GrowthPredictor):
                 headroom_mw=round(normal_cap - scenario_import_mw, 2),
             ))
 
+            # Per-transformer projected state for this feeder (load-transfer needs neighbors)
+            feeder_state: dict[str, dict[str, float]] = {}
+            for t in feeder_xfmrs:
+                tid = t["id"]
+                sc = scenario_xfmr_loading[tid]
+                rated = t.get("rated_kva") or 500
+                # Mitigation math must use the SAME apparent load that drives the displayed
+                # utilization (pandapower loading_percent, S=√(P²+Q²)), not p_kw/PF — otherwise
+                # transfer amounts and resulting-utilization figures won't reconcile with the
+                # projected % shown to the planner.
+                feeder_state[tid] = {
+                    "rated_kva": rated,
+                    "proj_load_kva": sc["loading_pct"] / 100.0 * rated,
+                }
+
             for t in feeder_xfmrs:
                 tid = t["id"]
                 rated_kva = t.get("rated_kva") or 500
@@ -300,10 +322,11 @@ class PowerFlowPredictor(GrowthPredictor):
                 status = self._classify(sc["loading_pct"])
                 newly_at_risk = baseline_status == "ok" and status != "ok"
 
-                recommendation = ""
+                mitigations: list[MitigationOption] = []
                 if status != "ok":
-                    target_kva = sc["p_kw"] / self.power_factor / (self.planning_threshold_pct / 100)
-                    recommendation = self._recommend_transformer_size(target_kva)
+                    mitigations = self._generate_mitigations(
+                        tid, fid, feeder_state, mitigation_costs, scenario,
+                    )
 
                 asset_projections.append(AssetProjection(
                     asset_id=tid,
@@ -318,7 +341,7 @@ class PowerFlowPredictor(GrowthPredictor):
                     status=status,
                     newly_at_risk=newly_at_risk,
                     overload_year=asset_first_overload.get(tid),
-                    recommendation=recommendation,
+                    mitigations=mitigations,
                     lat=t["lat"],
                     lon=t["lon"],
                 ))
@@ -418,11 +441,263 @@ class PowerFlowPredictor(GrowthPredictor):
             net.load.at[load_idx, "p_mw"] = new_p_mw
             net.load.at[load_idx, "q_mvar"] = new_q_mvar
 
-    def _recommend_transformer_size(self, target_kva: float) -> str:
-        for size in STANDARD_TRANSFORMER_SIZES_KVA:
-            if size >= target_kva:
-                return f"Upgrade to {size} kVA transformer"
-        return f"Upgrade to {math.ceil(target_kva / 100) * 100} kVA (non-standard, requires engineering review)"
+    def _generate_mitigations(
+        self,
+        asset_id: str,
+        feeder_id: str,
+        feeder_state: dict[str, dict[str, float]],
+        cost_table: list[dict[str, Any]],
+        scenario: GrowthScenario,
+    ) -> list[MitigationOption]:
+        """Build the three evaluated mitigation strategies for a constrained transformer."""
+        state = feeder_state[asset_id]
+        rated = state["rated_kva"]
+        load_kva = state["proj_load_kva"]
+
+        options = [
+            self._upgrade_option(rated, load_kva, cost_table),
+            self._parallel_option(rated, load_kva, cost_table),
+            self._load_transfer_option(asset_id, feeder_id, feeder_state, cost_table),
+        ]
+        for o in options:
+            o.years_gained = self._years_beyond_outlook(o, scenario)
+        self._select_recommended(options)
+        return options
+
+    def _years_beyond_outlook(
+        self, option: MitigationOption, scenario: GrowthScenario,
+    ) -> int | None:
+        """Extra years of headroom a fix absorbs past the horizon, at the scenario growth rate.
+
+        Every feasible mitigation is sized against the horizon-year load, so all of them clear
+        the full outlook by construction; the differentiator is how far past it the resulting
+        headroom stretches. Reported as whole years beyond the horizon. Conservative — it assumes
+        all load keeps compounding, though step loads (e.g. a data center) do not.
+        """
+        if not option.available or option.resulting_utilization_pct is None:
+            return None
+        years = self._headroom_years(option.resulting_utilization_pct, scenario)
+        # A load transfer also fills a neighbor; that receiver runs out of headroom first, so
+        # report whichever transformer crosses the threshold sooner.
+        if option.type == "load_transfer" and option.target_after_utilization_pct is not None:
+            recv = self._headroom_years(option.target_after_utilization_pct, scenario)
+            if years is not None and recv is not None:
+                years = min(years, recv)
+        return years
+
+    def _headroom_years(self, util: float, scenario: GrowthScenario) -> int | None:
+        """Whole years for `util` to grow back to the planning threshold at the scenario rate."""
+        g = scenario.annual_growth_pct
+        if g <= 0 or util <= 0 or util >= self.planning_threshold_pct:
+            return None
+        years = math.log(self.planning_threshold_pct / util) / math.log(1 + g / 100)
+        return int(min(years, 20.0))
+
+    def _headroom_label(self, resulting: float) -> str:
+        if resulting <= HEADROOM_TARGET_PCT:
+            return "Good headroom"
+        return (
+            f"Adequate — above the {HEADROOM_TARGET_PCT:.0f}% preferred target, "
+            f"below the {self.planning_threshold_pct:.0f}% limit"
+        )
+
+    def _upgrade_option(
+        self, rated: float, load_kva: float, cost_table: list[dict[str, Any]],
+    ) -> MitigationOption:
+        # Smallest standard size that clears the planning threshold (80% is the hard limit;
+        # 75% is only the preferred target, not a reason to jump an extra size).
+        new_size = next(
+            (s for s in STANDARD_TRANSFORMER_SIZES_KVA
+             if s > rated and load_kva / s * 100 < self.planning_threshold_pct), None
+        )
+        max_std = STANDARD_TRANSFORMER_SIZES_KVA[-1]
+        if new_size is None:
+            return MitigationOption(
+                type="transformer_upgrade",
+                label="Transformer Upgrade",
+                description="Not available as standard replacement",
+                available=False,
+                unavailable_reason=f"Required size exceeds standard {max_std:.0f} kVA unit.",
+            )
+        resulting = load_kva / new_size * 100
+        status = self._classify(resulting)
+        low, high = self._lookup_cost(cost_table, "transformer_upgrade", new_size)
+        return MitigationOption(
+            type="transformer_upgrade",
+            label="Transformer Upgrade",
+            description=f"{rated:.0f} → {new_size:.0f} kVA",
+            cost_low=low, cost_high=high,
+            capacity_added_kva=new_size - rated,
+            resulting_utilization_pct=round(resulting, 1),
+            resulting_status=status,
+            note=self._headroom_label(resulting),
+        )
+
+    def _parallel_option(
+        self, rated: float, load_kva: float, cost_table: list[dict[str, Any]],
+    ) -> MitigationOption:
+        # Paralleled units should match the existing transformer (impedance/ratio must match
+        # for proper load sharing), so floor the added unit at the existing rating; grow it
+        # only if a matched unit still can't clear the planning threshold.
+        added_size = next(
+            (s for s in STANDARD_TRANSFORMER_SIZES_KVA
+             if s >= rated and load_kva / (rated + s) * 100 < self.planning_threshold_pct), None
+        )
+        max_std = STANDARD_TRANSFORMER_SIZES_KVA[-1]
+        if added_size is None:
+            return MitigationOption(
+                type="parallel_transformer",
+                label="Parallel Transformer",
+                description="Not available as standard unit",
+                available=False,
+                unavailable_reason=f"Required added capacity exceeds standard {max_std:.0f} kVA unit.",
+            )
+        effective = rated + added_size
+        resulting = load_kva / effective * 100
+        status = self._classify(resulting)
+        low, high = self._lookup_cost(cost_table, "parallel_transformer", added_size)
+        return MitigationOption(
+            type="parallel_transformer",
+            label="Parallel Transformer",
+            description=f"Add matching {added_size:.0f} kVA unit",
+            cost_low=low, cost_high=high,
+            capacity_added_kva=added_size,
+            resulting_utilization_pct=round(resulting, 1),
+            resulting_status=status,
+            note=self._headroom_label(resulting),
+        )
+
+    def _load_transfer_option(
+        self, asset_id: str, feeder_id: str,
+        feeder_state: dict[str, dict[str, float]],
+        cost_table: list[dict[str, Any]],
+    ) -> MitigationOption:
+        state = feeder_state[asset_id]
+        rated = state["rated_kva"]
+        load_kva = state["proj_load_kva"]
+        # Aim to bring the overloaded unit to the preferred headroom target (75%), but a
+        # receiving transformer may only be filled up to the planning threshold (80%).
+        source_frac = HEADROOM_TARGET_PCT / 100.0
+        receiver_frac = (self.planning_threshold_pct - 0.1) / 100.0
+        # Move enough to reach the target — no more than necessary, since every transferred
+        # customer is a real switching operation.
+        required_transfer = load_kva - rated * source_frac
+
+        # Candidate neighbor: same-feeder transformer with the most spare capacity below the
+        # planning threshold. Reachability/switching feasibility is not validated here.
+        best_id: str | None = None
+        best_avail = 0.0
+        for nid, ns in feeder_state.items():
+            if nid == asset_id:
+                continue
+            avail = ns["rated_kva"] * receiver_frac - ns["proj_load_kva"]
+            if avail > best_avail:
+                best_avail = avail
+                best_id = nid
+
+        if best_id is None or best_avail <= 0 or required_transfer <= 0:
+            return MitigationOption(
+                type="load_transfer",
+                label="Load Transfer",
+                description="Not available",
+                available=False,
+                unavailable_reason=f"No transformer on {feeder_id} has spare planning headroom to receive load.",
+            )
+
+        # Cap the transfer at what the neighbor can absorb without crossing the threshold.
+        actual_transfer = min(required_transfer, best_avail)
+        src_after = (load_kva - actual_transfer) / rated * 100
+        if src_after >= self.planning_threshold_pct:
+            return MitigationOption(
+                type="load_transfer",
+                label="Load Transfer",
+                description="Not available",
+                available=False,
+                unavailable_reason=(
+                    f"No single transformer on {feeder_id} can absorb enough to bring "
+                    f"{asset_id} below the {self.planning_threshold_pct:.0f}% planning threshold."
+                ),
+            )
+
+        ns = feeder_state[best_id]
+        n_rated = ns["rated_kva"]
+        n_load = ns["proj_load_kva"]
+        # Distinguish "reached the 75% target" from "receiver ran out of headroom first" so the
+        # card explains why the source doesn't land exactly at 75%.
+        if actual_transfer < required_transfer - 1e-6:
+            note = (
+                f"Limited by receiving transformer capacity — "
+                f"target {HEADROOM_TARGET_PCT:.0f}%, achievable {src_after:.1f}%"
+            )
+        else:
+            note = self._headroom_label(src_after)
+        low, high = self._lookup_cost(cost_table, "load_transfer", 0.0)
+        return MitigationOption(
+            type="load_transfer",
+            label="Load Transfer",
+            description=f"{actual_transfer:.0f} kVA → {best_id}",
+            cost_low=low, cost_high=high,
+            load_transferred_kva=round(actual_transfer, 1),
+            resulting_utilization_pct=round(src_after, 1),
+            resulting_status=self._classify(src_after),
+            target_asset_id=best_id,
+            target_before_utilization_pct=round(n_load / n_rated * 100, 1),
+            target_after_utilization_pct=round((n_load + actual_transfer) / n_rated * 100, 1),
+            note=note,
+        )
+
+    def _select_recommended(self, options: list[MitigationOption]) -> None:
+        """Flag the best-value fix, and the most durable one when they diverge (fix-now vs fix-right).
+
+        All three strategies compete on cost-per-year-of-headroom (tie-broken by lower total cost,
+        then more years); the winner is marked `recommended` (best value). A load transfer is cheap
+        and can win when growth is slow enough that the few years it buys still beat a durable fix
+        per dollar. When that happens the tool does not silently pick a deferral over a capacity
+        add: it also flags the longest-lived capital fix as `most_durable`, so the planner sees both
+        the fix-it-now and fix-it-right options and chooses. The card shows years, $/yr, and the
+        switching-feasibility caveat.
+        """
+        def cost_mid(o: MitigationOption) -> float:
+            if o.cost_low is None or o.cost_high is None:
+                return float("inf")
+            return (o.cost_low + o.cost_high) / 2
+
+        def value_key(o: MitigationOption) -> tuple[float, float, int]:
+            mid = cost_mid(o)
+            years = o.years_gained or 0
+            cost_per_year = mid / years if years > 0 else float("inf")
+            return (cost_per_year, mid, -years)
+
+        feasible = [
+            o for o in options
+            if o.available and o.resulting_utilization_pct is not None
+            and o.resulting_utilization_pct < self.planning_threshold_pct
+        ]
+        if not feasible:
+            return
+        feasible.sort(key=value_key)
+        best = feasible[0]
+        best.recommended = True
+
+        # If a stopgap won on value, surface the longest-lived capital fix as the durable
+        # alternative so the fix-now/fix-right tradeoff stays the planner's call.
+        if best.type == "load_transfer":
+            capital = [o for o in feasible
+                       if o.type in ("transformer_upgrade", "parallel_transformer")]
+            if capital:
+                capital.sort(key=lambda o: (-(o.years_gained or 0), cost_mid(o)))
+                capital[0].most_durable = True
+
+    def _lookup_cost(
+        self, cost_table: list[dict[str, Any]], mtype: str, kva: float,
+    ) -> tuple[int | None, int | None]:
+        rows = [r for r in cost_table if r.get("mitigation_type") == mtype]
+        rows.sort(key=lambda r: (r.get("kva_max") is None, r.get("kva_max") or 0))
+        for r in rows:
+            kmax = r.get("kva_max")
+            if kmax is None or kva <= kmax:
+                return int(r["cost_low"]), int(r["cost_high"])
+        return None, None
 
     def _build_summary(
         self,

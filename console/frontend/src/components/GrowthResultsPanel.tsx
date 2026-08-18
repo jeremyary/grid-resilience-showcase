@@ -1,7 +1,9 @@
 // This project was developed with assistance from AI tools.
 
-import type { GrowthPrediction } from "../types/growth";
+import { useState } from "react";
+import type { AssetProjection, GrowthPrediction } from "../types/growth";
 import { ConstraintTimeline } from "./ConstraintTimeline";
+import { MitigationModal } from "./MitigationModal";
 
 interface GrowthResultsPanelProps {
   prediction: GrowthPrediction | null;
@@ -25,6 +27,8 @@ function utilizationBar(pct: number, status: string): React.CSSProperties {
 }
 
 export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
+  const [modalAsset, setModalAsset] = useState<AssetProjection | null>(null);
+
   if (!prediction) {
     return (
       <div className="grid-card">
@@ -138,7 +142,7 @@ export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
                   <th>Projected</th>
                   <th>Status</th>
                   <th>Constraint</th>
-                  <th>Recommendation</th>
+                  <th>Mitigations</th>
                 </tr>
               </thead>
               <tbody>
@@ -165,7 +169,28 @@ export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
                         <span style={{ color: "#6A6E73" }}>---</span>
                       )}
                     </td>
-                    <td style={{ fontSize: 11 }}>{a.recommendation}</td>
+                    <td>
+                      {a.mitigations.length > 0 ? (
+                        <button
+                          onClick={() => setModalAsset(a)}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: "#0066CC",
+                            background: "none",
+                            border: "1px solid #0066CC",
+                            borderRadius: 4,
+                            padding: "3px 10px",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          View Options
+                        </button>
+                      ) : (
+                        <span style={{ color: "#6A6E73" }}>---</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -173,6 +198,12 @@ export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
           </div>
         </div>
       )}
+
+      <MitigationModal
+        asset={modalAsset}
+        horizonYears={prediction.scenario.horizon_years}
+        onClose={() => setModalAsset(null)}
+      />
     </>
   );
 }

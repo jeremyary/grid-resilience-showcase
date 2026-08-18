@@ -25,6 +25,27 @@ export interface FeederProjection {
   headroom_mw: number;
 }
 
+export interface MitigationOption {
+  type: string;
+  label: string;
+  description: string;
+  available: boolean;
+  unavailable_reason: string | null;
+  cost_low: number | null;
+  cost_high: number | null;
+  capacity_added_kva: number | null;
+  load_transferred_kva: number | null;
+  resulting_utilization_pct: number | null;
+  resulting_status: "ok" | "at_risk" | "overloaded" | null;
+  target_asset_id: string | null;
+  target_before_utilization_pct: number | null;
+  target_after_utilization_pct: number | null;
+  years_gained: number | null;
+  recommended: boolean;
+  most_durable: boolean;
+  note: string;
+}
+
 export interface AssetProjection {
   asset_id: string;
   asset_type: string;
@@ -38,7 +59,7 @@ export interface AssetProjection {
   status: "ok" | "at_risk" | "overloaded";
   newly_at_risk: boolean;
   overload_year: number | null;
-  recommendation: string;
+  mitigations: MitigationOption[];
   lat: number;
   lon: number;
 }
