@@ -16,7 +16,6 @@ spec:
         {{- include "growth-simulator.selectorLabels" . | nindent 8 }}
     spec:
       restartPolicy: Never
-      serviceAccountName: {{ include "growth-simulator.serviceAccountName" . }}
       securityContext:
         runAsNonRoot: true
       containers:
