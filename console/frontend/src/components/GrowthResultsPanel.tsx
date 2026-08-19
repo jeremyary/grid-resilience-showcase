@@ -151,9 +151,9 @@ export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
                     <td className="grid-mono">
                       {a.asset_id}
                       {a.newly_at_risk ? (
-                        <span style={{ marginLeft: 4, fontSize: 9, color: "#A30000", fontWeight: 600 }}>SCENARIO</span>
+                        <span style={{ marginLeft: 4, fontSize: 9, color: "#A30000", fontWeight: 600 }}>PROJECTED</span>
                       ) : a.status !== "ok" ? (
-                        <span style={{ marginLeft: 4, fontSize: 9, color: "#6A6E73", fontWeight: 600 }}>BASELINE</span>
+                        <span style={{ marginLeft: 4, fontSize: 9, color: "#6A6E73", fontWeight: 600 }}>EXISTING</span>
                       ) : null}
                     </td>
                     <td className="grid-mono">{a.feeder_id}</td>
