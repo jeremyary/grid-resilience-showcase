@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS feeders (
     substation_id       TEXT,
     name                TEXT,
     normal_capacity_mw  DOUBLE PRECISION,
+    emergency_capacity_mw DOUBLE PRECISION,
     current_load_mw     DOUBLE PRECISION,
+    peak_load_mw        DOUBLE PRECISION,
     status              TEXT DEFAULT 'energized'
 );
 
@@ -28,7 +30,8 @@ CREATE TABLE IF NOT EXISTS assets (
     phase_config            TEXT,
     circuit_name            TEXT,
     protection_zone         TEXT,
-    customers_downstream    INTEGER DEFAULT 0
+    customers_downstream    INTEGER DEFAULT 0,
+    rated_kva               DOUBLE PRECISION
 );
 
 CREATE TABLE IF NOT EXISTS segments (
@@ -39,6 +42,7 @@ CREATE TABLE IF NOT EXISTS segments (
     conductor_type  TEXT,
     length_m        DOUBLE PRECISION,
     customers_served INTEGER DEFAULT 0,
+    ampacity_a      DOUBLE PRECISION,
     status          TEXT DEFAULT 'energized'
 );
 
@@ -76,6 +80,35 @@ CREATE TABLE IF NOT EXISTS crews (
     current_lon     DOUBLE PRECISION,
     status          TEXT DEFAULT 'available'
 );
+
+-- Conductor type reference table (electrical parameters for power-flow simulation)
+CREATE TABLE IF NOT EXISTS conductor_types (
+    name        TEXT PRIMARY KEY,
+    r_ohm_per_km    DOUBLE PRECISION NOT NULL,
+    x_ohm_per_km    DOUBLE PRECISION NOT NULL,
+    c_nf_per_km     DOUBLE PRECISION NOT NULL,
+    max_i_ka        DOUBLE PRECISION NOT NULL
+);
+
+-- Mitigation cost reference table (planning-level ranges by strategy and new-unit kVA)
+CREATE TABLE IF NOT EXISTS mitigation_costs (
+    mitigation_type TEXT NOT NULL,
+    kva_max         DOUBLE PRECISION,
+    cost_low        INTEGER NOT NULL,
+    cost_high       INTEGER NOT NULL
+);
+
+-- Add columns for growth prediction (safe to re-run)
+ALTER TABLE feeders ADD COLUMN IF NOT EXISTS emergency_capacity_mw DOUBLE PRECISION;
+ALTER TABLE feeders ADD COLUMN IF NOT EXISTS peak_load_mw DOUBLE PRECISION;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS rated_kva DOUBLE PRECISION;
+ALTER TABLE segments ADD COLUMN IF NOT EXISTS ampacity_a DOUBLE PRECISION;
+
+-- Transformer electrical parameters for power-flow simulation
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS vk_percent DOUBLE PRECISION;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS vkr_percent DOUBLE PRECISION;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS i0_percent DOUBLE PRECISION;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS pfe_kw DOUBLE PRECISION;
 
 -- Indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_assets_feeder ON assets(feeder_id);

@@ -204,6 +204,27 @@ async def scenario_action(action: str, request: Request) -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Growth Simulator proxy
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/growth/presets")
+async def growth_presets() -> Any:
+    return await proxy_get(_client(), f"{settings.growth_simulator_url}/growth/presets")
+
+
+@app.post("/api/growth/predict")
+async def growth_predict(request: Request) -> Any:
+    body = await request.json()
+    return await proxy_post(_client(), f"{settings.growth_simulator_url}/growth/predict", body)
+
+
+@app.get("/api/growth/feeders")
+async def growth_feeders() -> Any:
+    return await proxy_get(_client(), f"{settings.growth_simulator_url}/growth/feeders")
+
+
+# ---------------------------------------------------------------------------
 # Topology (grid structure for map rendering)
 # ---------------------------------------------------------------------------
 

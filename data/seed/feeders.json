@@ -4,7 +4,9 @@
     "substation_id": "SUB-A",
     "name": "Burlington North",
     "normal_capacity_mw": 12.0,
+    "emergency_capacity_mw": 14.4,
     "current_load_mw": 5.8,
+    "peak_load_mw": 7.1,
     "status": "energized"
   },
   {
@@ -12,7 +14,9 @@
     "substation_id": "SUB-A",
     "name": "Burlington South",
     "normal_capacity_mw": 14.0,
+    "emergency_capacity_mw": 16.8,
     "current_load_mw": 7.2,
+    "peak_load_mw": 8.5,
     "status": "energized"
   },
   {
@@ -20,7 +24,9 @@
     "substation_id": "SUB-B",
     "name": "Mebane West",
     "normal_capacity_mw": 11.0,
+    "emergency_capacity_mw": 13.2,
     "current_load_mw": 5.1,
+    "peak_load_mw": 6.2,
     "status": "energized"
   },
   {
@@ -28,7 +34,9 @@
     "substation_id": "SUB-B",
     "name": "Mebane South",
     "normal_capacity_mw": 13.0,
+    "emergency_capacity_mw": 15.6,
     "current_load_mw": 6.5,
+    "peak_load_mw": 7.8,
     "status": "energized"
   }
 ]
