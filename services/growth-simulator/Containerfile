@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir /tmp/common/ && rm -rf /tmp/common/
 USER 1001
 COPY services/growth-simulator/growth_simulator/ growth_simulator/
 COPY services/growth-simulator/pyproject.toml .
+COPY data/seed/migrate_powerflow.sql data/seed/migrate_mitigation_costs.sql growth_simulator/migrations/
 
 RUN pip install --no-cache-dir .
 
