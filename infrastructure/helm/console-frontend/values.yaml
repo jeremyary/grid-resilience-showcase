@@ -3,7 +3,7 @@
 replicaCount: 1
 
 image:
-  repository: quay.io/jary/grid-resilience-console-frontend
+  repository: quay.io/olavtar/grid-resilience-console-frontend
   tag: latest
   pullPolicy: Always
 

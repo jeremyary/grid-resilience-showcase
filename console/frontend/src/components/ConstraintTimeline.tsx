@@ -74,8 +74,8 @@ export function ConstraintTimeline({ feeders, yearlyProjections, horizonYears }:
                 border: "1px solid #E0E0E0",
                 borderRadius: 4,
               }}
-              formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, name]}
-              labelFormatter={(label: number) => `Year ${label}`}
+              formatter={(value, name) => [`${Number(value).toFixed(1)}%`, String(name)]}
+              labelFormatter={(label) => `Year ${label}`}
             />
             <ReferenceLine
               y={80}

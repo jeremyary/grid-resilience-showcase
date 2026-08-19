@@ -15,17 +15,6 @@ function statusBadge(status: string): string {
   return "grid-risk-badge grid-risk-badge--low";
 }
 
-function utilizationBar(pct: number, status: string): React.CSSProperties {
-  const color = status === "overloaded" ? "#A30000" : status === "at_risk" ? "#F0AB00" : "#3E8635";
-  return {
-    height: 6,
-    borderRadius: 3,
-    background: "#E0E0E0",
-    position: "relative" as const,
-    overflow: "hidden",
-  };
-}
-
 export function GrowthResultsPanel({ prediction }: GrowthResultsPanelProps) {
   const [modalAsset, setModalAsset] = useState<AssetProjection | null>(null);
 
