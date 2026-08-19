@@ -76,8 +76,9 @@ def main() -> None:
 
     print(f"\nTransformer results (top 5 by utilization):")
     for a in result.at_risk_assets[:5]:
+        rec = next((m.label for m in a.mitigations if m.recommended), "none")
         print(f"  {a.asset_id}: {a.current_utilization_pct}% -> {a.projected_utilization_pct}% "
-              f"[{a.status}] {a.recommendation}")
+              f"[{a.status}] recommended: {rec}")
 
     print(f"\nSummary: {result.summary}")
 
@@ -102,8 +103,9 @@ def main() -> None:
     newly_at_risk = [a for a in result.at_risk_assets if a.newly_at_risk]
     print(f"\nNewly at risk: {len(newly_at_risk)} transformers")
     for a in newly_at_risk:
+        rec = next((m.label for m in a.mitigations if m.recommended), "none")
         print(f"  {a.asset_id}: {a.current_utilization_pct}% -> {a.projected_utilization_pct}% "
-              f"| {a.recommendation}")
+              f"| recommended: {rec}")
 
     print(f"\nSummary: {result.summary}")
 
