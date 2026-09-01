@@ -1,0 +1,28 @@
+# This project was developed with assistance from AI tools.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: growth-simulator
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: grid-resilience
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: grid-resilience
+  source:
+    repoURL: https://github.com/olavtar/grid-resilience-showcase.git
+    targetRevision: main
+    path: infrastructure/helm/growth-simulator
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: grid-ops-services
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -7,7 +7,7 @@ metadata:
 spec:
   description: Grid Resilience Operations Center
   sourceRepos:
-    - "https://github.com/jeremyary/grid-resilience-showcase.git"
+    - "https://github.com/olavtar/grid-resilience-showcase.git"
   destinations:
     - namespace: grid-ops-infra
       server: https://kubernetes.default.svc

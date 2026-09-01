@@ -11,7 +11,7 @@ metadata:
 spec:
   project: grid-resilience
   source:
-    repoURL: https://github.com/jeremyary/grid-resilience-showcase.git
+    repoURL: https://github.com/olavtar/grid-resilience-showcase.git
     targetRevision: main
     path: infrastructure/helm/weather-service
     helm:

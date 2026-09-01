@@ -2,7 +2,7 @@
 
 REGISTRY ?= quay.io/jary
 TAG ?= latest
-SERVICES := scenario-engine weather-service camera-simulator risk-engine defect-detector dispatch-optimizer console-backend
+SERVICES := scenario-engine weather-service camera-simulator risk-engine defect-detector dispatch-optimizer console-backend growth-simulator
 FRONTEND_DIR := console/frontend
 
 # ---------------------------------------------------------------------------
@@ -78,4 +78,5 @@ lint:
 		services/risk-engine/risk_engine \
 		services/defect-detector/defect_detector \
 		services/dispatch-optimizer/dispatch_optimizer \
-		services/console-backend/console_backend
+		services/console-backend/console_backend \
+		services/growth-simulator/growth_simulator

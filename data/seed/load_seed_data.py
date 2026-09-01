@@ -29,14 +29,17 @@ def _insert_feeders(cur: psycopg.Cursor) -> int:
     for r in rows:
         cur.execute(
             """INSERT INTO feeders (id, substation_id, name, normal_capacity_mw,
-               current_load_mw, status) VALUES (%s, %s, %s, %s, %s, %s)
+               emergency_capacity_mw, current_load_mw, peak_load_mw, status)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (id) DO NOTHING""",
             (
                 r["id"],
                 r["substation_id"],
                 r["name"],
                 r["normal_capacity_mw"],
+                r.get("emergency_capacity_mw"),
                 r["current_load_mw"],
+                r.get("peak_load_mw"),
                 r["status"],
             ),
         )
@@ -51,8 +54,9 @@ def _insert_assets(cur: psycopg.Cursor) -> int:
                expected_lifespan_years, feeder_id, is_end_of_line,
                vegetation_clearance_m, last_inspection_date, status,
                rated_voltage_kv, phase_config, circuit_name, protection_zone,
-               customers_downstream)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               customers_downstream, rated_kva,
+               vk_percent, vkr_percent, i0_percent, pfe_kw)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (id) DO NOTHING""",
             (
                 r["id"],
@@ -72,6 +76,11 @@ def _insert_assets(cur: psycopg.Cursor) -> int:
                 r.get("circuit_name"),
                 r.get("protection_zone"),
                 r.get("customers_downstream", 0),
+                r.get("rated_kva"),
+                r.get("vk_percent"),
+                r.get("vkr_percent"),
+                r.get("i0_percent"),
+                r.get("pfe_kw"),
             ),
         )
     return len(rows)
@@ -82,8 +91,8 @@ def _insert_segments(cur: psycopg.Cursor) -> int:
     for r in rows:
         cur.execute(
             """INSERT INTO segments (id, feeder_id, from_asset_id, to_asset_id,
-               conductor_type, length_m, customers_served, status)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+               conductor_type, length_m, customers_served, ampacity_a, status)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (id) DO NOTHING""",
             (
                 r["id"],
@@ -93,6 +102,7 @@ def _insert_segments(cur: psycopg.Cursor) -> int:
                 r.get("conductor_type"),
                 r.get("length_m"),
                 r.get("customers_served", 0),
+                r.get("ampacity_a"),
                 r.get("status", "energized"),
             ),
         )
@@ -175,16 +185,56 @@ def _insert_crews(cur: psycopg.Cursor) -> int:
     return len(rows)
 
 
+def _insert_conductor_types(cur: psycopg.Cursor) -> int:
+    rows = _load_json("conductor_types.json")
+    for r in rows:
+        cur.execute(
+            """INSERT INTO conductor_types (name, r_ohm_per_km, x_ohm_per_km,
+               c_nf_per_km, max_i_ka)
+               VALUES (%s,%s,%s,%s,%s)
+               ON CONFLICT (name) DO NOTHING""",
+            (
+                r["name"],
+                r["r_ohm_per_km"],
+                r["x_ohm_per_km"],
+                r["c_nf_per_km"],
+                r["max_i_ka"],
+            ),
+        )
+    return len(rows)
+
+
+def _insert_mitigation_costs(cur: psycopg.Cursor) -> int:
+    cur.execute("SELECT COUNT(*) FROM mitigation_costs")
+    if (cur.fetchone() or [0])[0] > 0:
+        return 0
+    rows = _load_json("mitigation_costs.json")
+    for r in rows:
+        cur.execute(
+            """INSERT INTO mitigation_costs (mitigation_type, kva_max, cost_low, cost_high)
+               VALUES (%s,%s,%s,%s)""",
+            (
+                r["mitigation_type"],
+                r.get("kva_max"),
+                r["cost_low"],
+                r["cost_high"],
+            ),
+        )
+    return len(rows)
+
+
 def main() -> None:
     dsn = sys.argv[1] if len(sys.argv) > 1 else DB_DSN
     with psycopg.connect(dsn) as conn:
         with conn.cursor() as cur:
-            print(f"Feeders:  {_insert_feeders(cur)}")
-            print(f"Assets:   {_insert_assets(cur)}")
-            print(f"Segments: {_insert_segments(cur)}")
-            print(f"Switches: {_insert_switches(cur)}")
-            print(f"Cameras:  {_insert_cameras(cur)}")
-            print(f"Crews:    {_insert_crews(cur)}")
+            print(f"Feeders:          {_insert_feeders(cur)}")
+            print(f"Assets:           {_insert_assets(cur)}")
+            print(f"Segments:         {_insert_segments(cur)}")
+            print(f"Switches:         {_insert_switches(cur)}")
+            print(f"Cameras:          {_insert_cameras(cur)}")
+            print(f"Crews:            {_insert_crews(cur)}")
+            print(f"Conductor types:  {_insert_conductor_types(cur)}")
+            print(f"Mitigation costs: {_insert_mitigation_costs(cur)}")
         conn.commit()
     print("Seed data loaded.")
 

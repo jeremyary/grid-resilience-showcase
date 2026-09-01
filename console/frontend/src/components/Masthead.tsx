@@ -8,6 +8,7 @@ interface MastheadProps {
 
 const VIEWS = [
   { id: "operations", label: "Map" },
+  { id: "growth", label: "Growth" },
   { id: "whatsnext", label: "At Scale" },
   { id: "platform", label: "Platform" },
 ];

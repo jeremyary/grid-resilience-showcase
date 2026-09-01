@@ -1,0 +1,9 @@
+[
+  { "mitigation_type": "transformer_upgrade", "kva_max": 500, "cost_low": 25000, "cost_high": 45000 },
+  { "mitigation_type": "transformer_upgrade", "kva_max": 1000, "cost_low": 45000, "cost_high": 70000 },
+  { "mitigation_type": "transformer_upgrade", "kva_max": null, "cost_low": 70000, "cost_high": 120000 },
+  { "mitigation_type": "parallel_transformer", "kva_max": 500, "cost_low": 50000, "cost_high": 80000 },
+  { "mitigation_type": "parallel_transformer", "kva_max": 1000, "cost_low": 80000, "cost_high": 120000 },
+  { "mitigation_type": "parallel_transformer", "kva_max": null, "cost_low": 120000, "cost_high": 180000 },
+  { "mitigation_type": "load_transfer", "kva_max": null, "cost_low": 10000, "cost_high": 30000 }
+]

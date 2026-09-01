@@ -1,0 +1,7 @@
+# This project was developed with assistance from AI tools.
+apiVersion: v2
+name: growth-simulator
+description: Growth Simulator — grid capacity prediction for the Grid Resilience Operations Center
+version: 0.1.0
+appVersion: "0.1.0"
+type: application

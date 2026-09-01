@@ -1,0 +1,18 @@
+# This project was developed with assistance from AI tools.
+FROM registry.access.redhat.com/ubi9/python-312:latest
+
+WORKDIR /opt/app-root/src
+
+USER 0
+COPY services/common/ /tmp/common/
+RUN pip install --no-cache-dir /tmp/common/ && rm -rf /tmp/common/
+USER 1001
+COPY services/growth-simulator/growth_simulator/ growth_simulator/
+COPY services/growth-simulator/pyproject.toml .
+COPY data/seed/migrate_powerflow.sql data/seed/migrate_mitigation_costs.sql growth_simulator/migrations/
+
+RUN pip install --no-cache-dir .
+
+EXPOSE 8080
+
+CMD ["uvicorn", "growth_simulator.app:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -15,5 +15,6 @@ class ConsoleBackendSettings(ServiceSettings):
     defect_detector_url: str = "http://localhost:8084"
     dispatch_optimizer_url: str = "http://localhost:8085"
     scenario_engine_url: str = "http://localhost:8080"
+    growth_simulator_url: str = "http://localhost:8086"
     host: str = "0.0.0.0"
     port: int = 8090

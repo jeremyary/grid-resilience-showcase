@@ -60,6 +60,8 @@ spec:
               value: {{ .Values.upstreamServices.dispatchOptimizer | quote }}
             - name: SCENARIO_ENGINE_URL
               value: {{ .Values.upstreamServices.scenarioEngine | quote }}
+            - name: GROWTH_SIMULATOR_URL
+              value: {{ .Values.upstreamServices.growthSimulator | quote }}
             {{- range $key, $val := .Values.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
